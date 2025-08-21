@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erechim Revisitada pelos Modernistas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Playfair+Display:wght@700&display=swap');
+
+        :root {
+            --cor-fundo: #f4f1ea;
+            --cor-primaria: #2c3e50;
+            --cor-secundaria: #c03b2b;
+            --cor-acento: #e67e22;
+            --cor-texto: #34495e;
+            --cor-feedback-certo: #27ae60;
+            --cor-feedback-errado: #c0392b;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            user-select: none;
+        }
+
+        h1, h2 {
+            font-family: 'Playfair Display', serif;
+            color: var(--cor-primaria);
+        }
+
+        .container { max-width: 900px; margin: auto; }
+
+        .intro-text {
+            max-width: 750px;
+            margin: 25px auto 40px auto;
+            text-align: justify;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .intro-text p { margin-bottom: 1em; }
+        
+        .intro-text p:last-child {
+            margin-bottom: 0;
+            text-align: center;
+            font-weight: bold;
+            color: var(--cor-primaria);
+        }
+
+        #map-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 500px;
+            margin: 30px auto;
+            background-color: #a9cce3;
+            background-image: url('https://www.transparenttextures.com/patterns/subtle-carbon.png');
+            border: 5px solid var(--cor-primaria);
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        #map-container::before {
+            content: "Arraste os locais para reorganizar o roteiro!";
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-style: italic;
+            color: rgba(0,0,0,0.5);
+            font-size: 14px;
+        }
+        
+        #map-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        .map-marker {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: var(--cor-secundaria);
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: grab;
+            transition: transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 2; 
+        }
+
+        .map-marker:hover { transform: scale(1.2); }
+        
+        .map-marker.dragging {
+            transform: scale(1.3);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            z-index: 10;
+            cursor: grabbing;
+        }
+        
+        #marker-castelinho { top: 15%; left: 10%; }
+        #marker-chafariz { top: 40%; left: 30%; }
+        #marker-catedral { top: 55%; left: 15%; }
+        #marker-prefeitura { top: 35%; left: 60%; }
+        #marker-portico { top: 80%; left: 45%; }
+        #marker-ypiranga { top: 75%; left: 75%; }
+        #marker-ifrs { top: 10%; left: 80%; }
+
+        .tooltip {
+            background-color: var(--cor-primaria);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 11;
+            width: 160px;
+            margin-left: -80px;
+            left: 50%;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .tooltip.visible { visibility: visible; opacity: 1; }
+        .tooltip.position-above { bottom: 120%; }
+        .tooltip.position-below { top: 120%; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--cor-fundo); padding: 30px; border-radius: 15px; width: 90%; max-width: 650px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 15px 30px rgba(0,0,0,0.4); }
+        .close-button { position: absolute; top: 10px; right: 15px; font-size: 30px; font-weight: bold; color: var(--cor-primaria); cursor: pointer; }
+        
+        #completion-modal .modal-content {
+            max-width: 500px;
+            text-align: center;
+        }
+        #final-score-container {
+            font-size: 1.5em;
+            margin: 20px 0;
+            color: var(--cor-texto);
+        }
+        #final-score-container span {
+            font-weight: bold;
+            color: var(--cor-acento);
+            font-size: 1.2em;
+        }
+        #restart-all-button {
+            background-color: var(--cor-acento);
+        }
+
+        #modal-image { width: 100%; height: 200px; background-size: cover; background-position: center; border-radius: 10px; margin-bottom: 20px; border: 3px solid var(--cor-primaria); }
+        #modal-intro { font-style: italic; text-align: left; margin-bottom: 25px; }
+        #quiz-form { text-align: left; }
+        .question-block { margin-bottom: 20px; padding: 15px; border-left: 5px solid var(--cor-acento); background-color: #fff; border-radius: 0 8px 8px 0; }
+        .question-block h4 { margin-top: 0; }
+        .question-block label { display: block; margin: 5px 0; padding: 8px; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; }
+        .question-block label:hover { background-color: #f0f0f0; }
+        .question-block input[type="radio"]:disabled + span { color: #888; }
+        
+        .feedback { margin-top: 10px; padding: 10px; border-radius: 5px; font-style: italic; display: none; }
+        .feedback.correct { background-color: #eafaf1; border-left: 3px solid var(--cor-feedback-certo); color: var(--cor-feedback-certo); }
+        .feedback.incorrect { background-color: #f9ebea; border-left: 3px solid var(--cor-feedback-errado); color: var(--cor-feedback-errado); }
+        
+        .quiz-button { display: block; width: 100%; padding: 15px; font-size: 18px; font-weight: bold; color: white; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s; margin-top: 10px; }
+        #quiz-submit { background-color: var(--cor-secundaria); }
+        #quiz-submit:hover { background-color: var(--cor-acento); }
+
+        .quiz-results-area { margin-top: 20px; }
+        #quiz-score { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+        .results-buttons { display: flex; flex-direction: column; gap: 10px; }
+        
+        #back-button { background-color: var(--cor-primaria); }
+        #back-button:hover { background-color: #5d6d7e; }
+        
+        #reset-button { background-color: transparent; color: var(--cor-primaria); border: 2px solid var(--cor-primaria); }
+        #reset-button:hover { background-color: var(--cor-primaria); color: white; }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2.2em;
+            }
+
+            .intro-text {
+                text-align: left;
+                font-size: 15px;
+                margin-bottom: 30px;
+            }
+
+            #map-container {
+                height: auto;
+                aspect-ratio: 4 / 3;
+            }
+
+            #marker-castelinho { top: 10%; left: 15%; }
+            #marker-ifrs { top: 15%; left: 70%; }
+            #marker-prefeitura { top: 35%; left: 45%; }
+            #marker-catedral { top: 50%; left: 18%; }
+            #marker-chafariz { top: 65%; left: 65%; }
+            #marker-portico { top: 85%; left: 25%; }
+            #marker-ypiranga { top: 82%; left: 75%; }
+            
+            .modal-content {
+                padding: 20px 15px;
+                max-height: 95vh;
+            }
+
+            .question-block h4 {
+                font-size: 1.1em;
+            }
+
+            .quiz-button {
+                padding: 12px;
+                font-size: 16px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Erechim Revisitada pelos Modernistas</h1>
+        <div class="intro-text">
+            <p>Em 1922, um terremoto cultural chacoalhou o Brasil. A <strong>Semana de Arte Moderna</strong>, realizada no Theatro Municipal de São Paulo, foi o grito de independência de artistas que não queriam mais copiar a Europa. Liderados por figuras como Mário de Andrade, Oswald de Andrade, Anita Malfatti e Tarsila do Amaral, eles buscavam uma linguagem autenticamente brasileira, que misturasse nossas cores, nosso povo e nossas histórias com as novas e ousadas formas da vanguarda. Eles queriam romper com o passado e inventar um novo futuro.</p>
+            <p>Naquela mesma época, nossa Erechim era uma cidade jovem, um projeto de futuro que começava a tomar forma no norte do Rio Grande do Sul. A influência direta daquele movimento em nossos prédios e monumentos foi pequena, pois nossos principais cartões-postais foram erguidos nas décadas seguintes.</p>
+            <p>Mas... e se essa busca por uma identidade brasileira acontecesse hoje, em nossas ruas? E se os modernistas caminhassem por Erechim agora, em agosto de 2025?</p>
+            <p>É este o convite que este site faz a você.</p>
+            <p>Aqui, imaginamos como esses artistas visionários interpretariam nossos pontos turísticos e culturais. Como as cores vibrantes de <strong>Tarsila do Amaral</strong> dariam nova vida ao <strong>Castelinho</strong>? Como o expressionismo dramático de <strong>Anita Malfatti</strong> capturaria a alma da <strong>Catedral São José</strong>? E como a "antropofagia" de <strong>Oswald de Andrade</strong> – a ideia de "devorar" culturas para criar algo novo – se aplicaria à arquitetura da <strong>Prefeitura</strong> ou à missão educadora do <strong>IFRS</strong>?</p>
+            <p>Este mapa interativo é um roteiro lúdico, uma conversa entre tempos e uma brincadeira cultural. Navegue, arraste os ícones, clique nos locais para desvendar suas histórias e teste seus conhecimentos nos quizzes que unem passado e presente.</p>
+            <p>Prepare-se para ver Erechim com novos olhos: os olhos inquietos e revolucionários dos modernistas de 22.</p>
+        </div>
+        <div id="map-container">
+            <svg id="map-lines"></svg>
+            <div class="map-marker" id="marker-castelinho" data-spot="castelinho"> 🏰 <span class="tooltip">Castelinho</span> </div>
+            <div class="map-marker" id="marker-catedral" data-spot="catedral"> ⛪ <span class="tooltip">Catedral São José</span> </div>
+            <div class="map-marker" id="marker-prefeitura" data-spot="prefeitura"> 🏛️ <span class="tooltip">Prefeitura Municipal</span> </div>
+            <div class="map-marker" id="marker-portico" data-spot="portico"> 🚪 <span class="tooltip">Pórtico de Erechim</span> </div>
+            <div class="map-marker" id="marker-ypiranga" data-spot="ypiranga"> 🏟️ <span class="tooltip">Estádio do Ypiranga</span> </div>
+            <div class="map-marker" id="marker-chafariz" data-spot="chafariz"> ⛲ <span class="tooltip">Chafariz</span> </div>
+            <div class="map-marker" id="marker-ifrs" data-spot="ifrs"> 🎓 <span class="tooltip">IFRS Campus Erechim</span> </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="quiz-modal-overlay">
+        <div class="modal-content">
+            <span class="close-button" id="quiz-close-button">&times;</span>
+            <div id="modal-image"></div>
+            <h2 id="modal-title"></h2>
+            <p id="modal-intro"></p>
+            <div id="quiz-container"></div>
+            <div class="quiz-results-area" id="quiz-results-area"></div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="completion-modal-overlay">
+        <div class="modal-content" id="completion-modal">
+            <span class="close-button" id="completion-close-button">&times;</span>
+            <h2>Parabéns! 🥳</h2>
+            <p>Você completou o roteiro modernista de Erechim!</p>
+            <div id="final-score-container">
+                Você acertou <span id="final-score"></span> de <span id="total-questions"></span> perguntas.
+            </div>
+            <button id="restart-all-button" class="quiz-button">Reiniciar Roteiro</button>
+        </div>
+    </div>
+
+<script>
+const connectionPath = ['castelinho', 'chafariz', 'catedral', 'portico', 'ypiranga', 'prefeitura', 'ifrs'];
+const pontosTuristicos = {
+    castelinho: { id: "castelinho", nome: "O Castelinho", artista: "Tarsila do Amaral", imagemUrl: "img/castelinho.jpg", textoIntroducao: `Tarsila adorava retratar o Brasil "para exportação". Ao ver o Castelinho, ela não veria apenas uma lareira de pedra, mas uma forma geométrica ousada contra o céu azul, simplificando suas linhas e pintando o jardim com as cores da nossa terra.`, quiz: [ { pergunta: `O prédio histórico conhecido como "Castelinho" tem um nome oficial. Qual é?`, opcoes: ["Paço Municipal", "Centro Cultural 25 de Julho", "Comissão de Terras", "Prédio da Administração"], respostaCorreta: 2, feedback: { correct: `Isso mesmo! Ele foi a sede da Comissão de Terras. Oswald de Andrade chamaria isso de "devorar" o território para criar uma nova cultura.`, incorrect: `Quase! O nome oficial é Comissão de Terras, pois foi o centro administrativo da colonização de Erechim.` } }, { pergunta: `A construção do Castelinho foi finalizada em 1918. Qual era o seu principal material de construção?`, opcoes: ["Tijolos", "Concreto", "Madeira", "Aço"], respostaCorreta: 2, feedback: { correct: `Exato, a madeira! Os modernistas valorizavam os materiais nacionais, e a madeira de araucária era abundante na região.`, incorrect: `Opa! O principal material usado foi a madeira de araucária, típica da nossa região.` } }, { pergunta: `Atualmente, qual destes usos NÃO corresponde à sua função hoje?`, opcoes: ["Sede do Arquivo Histórico", "Espaço para exposições", "Sede da Prefeitura de Erechim", "Ponto de informações turísticas"], respostaCorreta: 2, feedback: { correct: `Isso mesmo! A Prefeitura fica em outro prédio. O Castelinho hoje pulsa com arte e história.`, incorrect: `Não é essa a resposta. A função que o Castelinho não tem hoje é de Sede da Prefeitura, que fica em outro local.` } }, { pergunta: `Imagine que Tarsila do Amaral pintou o Castelinho. Qual elemento ela certamente exageraria com cores fortes?`, opcoes: ["Os carros na rua", "As árvores e flores do jardim", "As antenas de TV", "O asfalto da avenida"], respostaCorreta: 1, feedback: { correct: `Sim! Tarsila transformaria nosso jardim em uma selva de cores vibrantes, celebrando a natureza que abraça a arquitetura.`, incorrect: `Quase! Tarsila valorizava a natureza e as cores do Brasil. Ela provavelmente daria destaque às árvores e flores do jardim.` } }, { pergunta: `Qual o principal estilo arquitetônico do Castelinho?`, opcoes: ["Art Déco", "Gótico", "Eclético com influências europeias", "Modernista"], respostaCorreta: 2, feedback: { correct: `Perfeito! Seu estilo é eclético. Os modernistas o "antropofagizariam": absorveriam sua história para transformá-la em algo nosso.`, incorrect: `Na verdade, o estilo é Eclético, misturando várias influências europeias da época.` } } ] },
+    catedral: { id: "catedral", nome: "Catedral São José", artista: "Anita Malfatti", imagemUrl: "img/catedral_2.jpg", textoIntroducao: `Anita Malfatti usava cores e formas para expressar emoção. Diante da imponência da Catedral São José, seus traços expressionistas capturariam a força dos arcos, a luz dramática dos vitrais e a fé do povo, pintando a alma do edifício.`, quiz: [ { pergunta: `Em que década a construção da Catedral São José foi concluída?`, opcoes: ["Década de 1920", "Década de 1940", "Década de 1970", "Década de 1990"], respostaCorreta: 2, feedback: { correct: `Isso mesmo, na década de 1970! É um exemplo da arquitetura religiosa moderna da época.`, incorrect: `Na verdade, a construção como a conhecemos foi finalizada na década de 1970.` } }, { pergunta: `Qual termo descreve melhor a arquitetura da Catedral?`, opcoes: ["Barroco", "Art Déco", "Moderno-Brutalista", "Neoclássico"], respostaCorreta: 2, feedback: { correct: `Correto! A Catedral adota um estilo moderno com elementos do brutalismo. Uma estética forte que Anita Malfatti certamente apreciaria.`, incorrect: `O estilo que melhor descreve a Catedral é o Moderno com traços do Brutalismo, pelo uso de concreto e formas geométricas.` } }, { pergunta: `Se Anita Malfatti fosse pintar a Catedral, em qual elemento ela focaria para transmitir a maior carga de emoção?`, opcoes: ["O relógio da torre", "As escadarias", "Os vitrais coloridos e a luz", "O estacionamento"], respostaCorreta: 2, feedback: { correct: `Exatamente! Os vitrais seriam o ponto alto para Anita Malfatti explorar o contraste das cores e a luz de forma dramática.`, incorrect: `Provavelmente não. Para uma artista expressionista como Anita Malfatti, os vitrais e o jogo de luz seriam a escolha perfeita para transmitir emoção.` } }, { pergunta: `A cidade de Erechim tem um padroeiro. Quem é?`, opcoes: ["São Pedro", "Nossa Senhora de Fátima", "Santo Agostinho", "São João Batista"], respostaCorreta: 0, feedback: { correct: `Perfeito! O padroeiro de Erechim é São Pedro. A Catedral é dedicada a São José.`, incorrect: `Opa, quase! O padroeiro da cidade de Erechim é São Pedro.` } }, { pergunta: `A arquitetura da Catedral, embora moderna, tem inspiração em qual movimento europeu?`, opcoes: ["Renascimento Italiano", "Rococó Francês", "Modernismo Europeu (Le Corbusier)", "Gótico Inglês"], respostaCorreta: 2, feedback: { correct: `Isso mesmo! A arquitetura religiosa moderna no Brasil foi muito influenciada por arquitetos do Modernismo Europeu, como Le Corbusier.`, incorrect: `A inspiração principal vem do Modernismo Europeu, de arquitetos como o franco-suíço Le Corbusier.` } } ] },
+    prefeitura: { id: "prefeitura", nome: "Prefeitura Municipal", artista: "Oswald de Andrade", imagemUrl: "img/prefeitura.jpg", textoIntroducao: `Oswald de Andrade, com seu Manifesto Antropofágico, nos ensinou a 'devorar' a cultura estrangeira para criar algo autenticamente brasileiro. O prédio da prefeitura, com seu estilo Art Déco, é um prato cheio: uma estética europeia 'digerida' e transformada em um símbolo cívico de Erechim.`, quiz: [ { pergunta: `A Prefeitura de Erechim é um dos mais belos exemplos de qual estilo arquitetônico na cidade?`, opcoes: ["Neoclássico", "Colonial", "Art Déco", "Barroco"], respostaCorreta: 2, feedback: { correct: `Correto! O Art Déco, com suas formas geométricas e elegância, era o estilo 'moderno' da época e marcou a arquitetura de Erechim.`, incorrect: `Na verdade, o estilo marcante da Prefeitura é o Art Déco, muito popular nas décadas de 1930 e 1940.` } }, { pergunta: `Oswald de Andrade valorizava a ruptura com o 'passadismo'. O prédio da prefeitura, de 1941, representou uma modernização em relação a qual antiga sede do poder?`, opcoes: ["O próprio Castelinho", "Um prédio na Av. Maurício Cardoso", "Salas alugadas", "Não havia sede anterior"], respostaCorreta: 0, feedback: { correct: `Exato! Antes da prefeitura, parte da administração funcionava no Castelinho. Uma verdadeira 'antropofagia' de funções!`, incorrect: `Antes deste prédio, a administração municipal funcionava parcialmente no Castelinho.` } }, { pergunta: `O Manifesto Antropofágico foi publicado em 1928. A que ele se opunha principalmente?`, opcoes: ["À industrialização do Brasil", "À cópia pura e simples da cultura europeia", "À pintura de paisagens", "À imigração"], respostaCorreta: 1, feedback: { correct: `Perfeito. A ideia não era negar a Europa, mas sim 'comê-la' e digeri-la, criando uma cultura brasileira forte e original.`, incorrect: `O alvo principal do manifesto era a simples cópia da cultura europeia, defendendo uma 'digestão' dela para criar algo nosso.` } }, { pergunta: `Qual detalhe na fachada da prefeitura melhor representa a ideia de ordem e modernidade do Art Déco?`, opcoes: ["As janelas arredondadas", "O mastro da bandeira", "As linhas retas e a simetria", "A cor clara da pintura"], respostaCorreta: 2, feedback: { correct: `Isso! As linhas firmes, a simetria e a geometria eram a 'linguagem' do Art Déco para expressar um futuro moderno e organizado.`, incorrect: `A característica mais forte do Art Déco presente ali são as linhas retas e a simetria da fachada.` } }, { pergunta: `Se Oswald de Andrade escrevesse um poema sobre a Prefeitura, qual verso seria mais provável?`, opcoes: ["'Saudade da Europa em pedra tropical'", "'Devoro o concreto, arroto o cidadão'", "'Linhas que choram pelo tempo que passou'", "'Palácio de mármore, tão longe do povão'"], respostaCorreta: 1, feedback: { correct: `Com certeza! A linguagem provocadora e a ideia de 'devorar' para criar algo novo são a cara de Oswald de Andrade.`, incorrect: `A opção mais alinhada ao estilo provocador e 'antropofágico' de Oswald de Andrade seria "Devoro o concreto, arroto o cidadão".` } } ] },
+    portico: { id: "portico", nome: "Pórtico de Erechim", artista: "Di Cavalcanti", imagemUrl: "img/portico.jpg", textoIntroducao: `Di Cavalcanti foi o pintor do povo, das ruas, da identidade brasileira. O Pórtico de Erechim seria para ele uma moldura para a chegada dos pioneiros, o palco onde a diversidade de etnias se encontra para construir o futuro.`, quiz: [ { pergunta: `O Pórtico de Erechim foi construído na entrada da cidade para homenagear principalmente:`, opcoes: ["O centenário da cidade", "Os combatentes da II Guerra", "As etnias colonizadoras", "Os artistas locais"], respostaCorreta: 2, feedback: { correct: `Exato! Ele é um tributo à diversidade de povos (poloneses, italianos, alemães, etc.) que formaram a Capital da Amizade.`, incorrect: `O principal motivo da construção do pórtico foi homenagear as diversas etnias que colonizaram a região.` } }, { pergunta: `Di Cavalcanti é famoso por usar cores vibrantes. Olhando para o Pórtico, qual elemento natural ao seu redor seria um prato cheio para a paleta dele?`, opcoes: ["O asfalto da rodovia", "Os postes de luz", "As araucárias e a vegetação nativa", "Os carros que passam"], respostaCorreta: 2, feedback: { correct: `Com certeza! Di Cavalcanti pintaria as imponentes araucárias com verdes intensos, emoldurando o pórtico com a força da nossa terra.`, incorrect: `Um pintor que valorizava o Brasil como Di Cavalcanti certamente se encantaria com as araucárias e a vegetação nativa.` } }, { pergunta: `A obra mais famosa de Di Cavalcanti, que também retrata tipos populares, se chama:`, opcoes: ["Abaporu", "Samba", "O Lavrador de Café", "Operários"], respostaCorreta: 1, feedback: { correct: `Correto! A tela "Samba" é um ícone de sua obra, mostrando a energia e a alma do povo brasileiro, tema que se conecta à união de etnias em Erechim.`, incorrect: `Na verdade, a obra mais famosa dele com essa temática é "Samba". Abaporu é de Tarsila do Amaral.` } }, { pergunta: `O Pórtico tem a inscrição "Capital da Amizade". Este título foi dado a Erechim por causa da:`, opcoes: ["Sua localização estratégica", "Harmonia entre as diversas etnias", "Assinatura de um tratado de paz", "Beleza de suas praças"], respostaCorreta: 1, feedback: { correct: `Perfeito! A convivência pacífica e a cooperação entre os diferentes povos colonizadores renderam a Erechim este belo título.`, incorrect: `O título "Capital da Amizade" vem da convivência harmoniosa entre as muitas etnias que formaram a cidade.` } }, { pergunta: `Os modernistas de 22 buscavam uma identidade nacional. Como o Pórtico de Erechim simboliza essa busca?`, opcoes: ["Copiando um monumento europeu famoso", "Usando materiais importados", "Representando a fusão de diferentes culturas que formam o Brasil", "Sendo uma estrutura isolada"], respostaCorreta: 2, feedback: { correct: `Exatamente! Assim como os modernistas, o pórtico celebra a ideia de que a identidade brasileira é formada pela rica mistura de seus povos.`, incorrect: `Ele simboliza essa busca ao representar a fusão de diferentes culturas que, juntas, formam a identidade local e, por extensão, a brasileira.` } } ] },
+    ypiranga: { id: "ypiranga", nome: "Estádio do Ypiranga", artista: "Lasar Segall", imagemUrl: "img/ypiranga.jpg", textoIntroducao: `Lasar Segall capturava a alma das multidões. Ele não veria um estádio, mas um 'Colosso' pulsando com a emoção coletiva. O verde do gramado, o amarelo 'Canarinho' e o grito da torcida seriam traduzidos em pinceladas expressionistas, cheias de paixão e drama.`, quiz: [ { pergunta: `O Estádio Olímpico Colosso da Lagoa foi inaugurado em 1970. Qual era o grande objetivo de sua construção?`, opcoes: ["Ser o maior estádio do mundo", "Receber jogos da Copa do Mundo de 1970", "Atender às exigências da CBD para o Ypiranga disputar o campeonato nacional", "Ser um espaço para shows"], respostaCorreta: 2, feedback: { correct: `Correto! Sua construção foi um esforço da comunidade para colocar o Ypiranga no cenário do futebol nacional da época.`, incorrect: `O principal motivo foi atender às exigências da antiga CBD (hoje CBF) para que o clube pudesse disputar o campeonato nacional.` } }, { pergunta: `As cores do Ypiranga, verde e amarelo, também nomearam um movimento modernista. Qual era o lema do Grupo da Anta e do Verde-Amarelismo?`, opcoes: ["Tupi or not Tupi", "A alegria é a prova dos nove", "Pau-Brasil", "Originalidade e nativismo"], respostaCorreta: 3, feedback: { correct: `Exato! O movimento Verde-Amarelo, mais nacionalista, defendia a originalidade e o nativismo na arte brasileira.`, incorrect: `O lema que guiava o grupo Verde-Amarelo era a busca pela originalidade e pelo nativismo.` } }, { pergunta: `Qual artista modernista, conhecido por retratar a emoção e o drama de grandes grupos, melhor representaria a paixão da torcida do Ypiranga?`, opcoes: ["Tarsila do Amaral, com suas cores calmas", "Lasar Segall, com seu expressionismo", "Victor Brecheret, com esculturas estáticas", "Anita Malfatti, com retratos individuais"], respostaCorreta: 1, feedback: { correct: `Perfeito! O expressionismo de Lasar Segall é ideal para capturar a tensão e a alegria coletiva de um jogo de futebol.`, incorrect: `O artista ideal seria Lasar Segall. Seu estilo expressionista era perfeito para capturar a emoção das multidões.` } }, { pergunta: `O apelido 'Canarinho' do Ypiranga remete a um pássaro. Qual obra de Tarsila do Amaral, ícone da Antropofagia, também destaca um animal de forma central?`, opcoes: ["A Cuca", "Urutu", "O Touro", "Abaporu"], respostaCorreta: 0, feedback: { correct: `Isso! 'A Cuca', de 1924, traz um bicho imaginário junto a outros elementos, representando o folclore e o imaginário brasileiro.`, incorrect: `A resposta é 'A Cuca', uma pintura de 1924 que representa um ser do folclore brasileiro.` } }, { pergunta: `Um estádio de futebol é um espaço para o povo. Essa valorização do popular era um ideal modernista em oposição a qual característica da arte anterior?`, opcoes: ["O uso de cores vibrantes", "O foco em temas religiosos", "O caráter elitista e acadêmico", "A inspiração na natureza"], respostaCorreta: 2, feedback: { correct: `Exatamente! Os modernistas queriam tirar a arte dos salões e aproximá-la da vida e do povo brasileiro, em oposição à arte acadêmica e elitista.`, incorrect: `Os modernistas se opunham principalmente ao caráter elitista e acadêmico da arte, buscando uma conexão maior com o povo.` } } ] },
+    chafariz: { id: "chafariz", nome: "Chafariz da Praça", artista: "Victor Brecheret", imagemUrl: "img/chafariz.jpg", textoIntroducao: `O escultor Victor Brecheret transformava pedra em movimento e emoção. Olhando o Chafariz, ele não veria só água e cimento, mas formas que dançam com a luz, uma escultura viva no coração da Praça da Bandeira, um monumento ao encontro e à vida urbana.`, quiz: [ { pergunta: `O Chafariz é um ponto central da praça mais famosa de Erechim. Qual o nome dela?`, opcoes: ["Praça Júlio de Castilhos", "Praça da Bandeira", "Praça Jayme Lago", "Praça dos Bombeiros"], respostaCorreta: 1, feedback: { correct: `Correto! A Praça da Bandeira é o coração histórico e social da cidade.`, incorrect: `Ele fica na Praça da Bandeira, o ponto de encontro central de Erechim.` } }, { pergunta: `Victor Brecheret foi o principal nome da escultura em qual período da arte brasileira?`, opcoes: ["Barroco Mineiro", "Modernismo", "Neoclassicismo", "Romantismo"], respostaCorreta: 1, feedback: { correct: `Exato! Brecheret foi o grande escultor da Semana de 22 e um dos renovadores da escultura no Brasil.`, incorrect: `Brecheret foi o principal nome da escultura no Modernismo brasileiro.` } }, { pergunta: `Recentemente, o Chafariz passou por uma grande revitalização que o tornou uma atração noturna. O que foi instalado?`, opcoes: ["Estátuas de pioneiros", "Um novo sistema de som", "Uma moderna iluminação cênica com LED", "Bancos de mármore"], respostaCorreta: 2, feedback: { correct: `Isso mesmo! A nova iluminação cênica com LED valorizou as formas da fonte, algo que um mestre da forma como Brecheret certamente aprovaria.`, incorrect: `A grande novidade da revitalização foi a moderna iluminação cênica com luzes de LED.` } }, { pergunta: `A obra mais famosa de Brecheret é o "Monumento às Bandeiras". Assim como a Praça da Bandeira, ambas as obras homenageiam:`, opcoes: ["Artistas famosos", "A natureza brasileira", "Símbolos da identidade nacional e da exploração do território", "Deuses da mitologia grega"], respostaCorreta: 2, feedback: { correct: `Perfeito! Tanto a bandeira quanto as bandeiras dos exploradores são símbolos da construção da identidade e do território brasileiro.`, incorrect: `Ambas homenageiam símbolos da identidade nacional e da formação do território brasileiro.` } }, { pergunta: `O movimento da água no Chafariz e as formas arredondadas são características do estilo que Brecheret ajudou a popularizar no Brasil. Qual é?`, opcoes: ["Cubismo", "Expressionismo", "Surrealismo", "Art Déco"], respostaCorreta: 3, feedback: { correct: `Correto! As formas fluidas, geométricas e elegantes do Art Déco estão presentes tanto na obra de Brecheret quanto no design de muitas fontes da época.`, incorrect: `Essas características de formas fluidas e geométricas são típicas do Art Déco.` } } ] },
+    ifrs: { id: "ifrs", nome: "IFRS Campus Erechim", artista: "Mário de Andrade", imagemUrl: "img/ifrs.jpg", textoIntroducao: `Mário de Andrade foi o grande intelectual da Semana de 22, um pesquisador incansável da cultura brasileira. Ele veria o IFRS como uma 'fábrica de futuros', onde o conhecimento é pesquisado, construído e compartilhado para criar um novo Brasil, moderno e tecnológico.`, quiz: [ { pergunta: `O que a sigla IFRS significa?`, opcoes: ["Instituto Federal de Referência em Software", "Instituto Filantrópico do Rio Grande do Sul", "Instituto Federal de Educação, Ciência e Tecnologia do Rio Grande do Sul", "Instituição Rio-grandense de Ensino Superior"], respostaCorreta: 2, feedback: { correct: `Correto! O nome já reflete a missão múltipla da instituição, algo que o polímata Mário de Andrade admiraria.`, incorrect: `A sigla significa Instituto Federal de Educação, Ciência e Tecnologia do Rio Grande do Sul.` } }, { pergunta: `A principal obra de Mário de Andrade é um livro que viaja pelo Brasil para construir a identidade de seu "herói sem nenhum caráter". Qual o nome do livro?`, opcoes: ["O Guarani", "Grande Sertão: Veredas", "Macunaíma", "Memórias Póstumas de Brás Cubas"], respostaCorreta: 2, feedback: { correct: `Exato! "Macunaíma" é uma rapsódia sobre o Brasil, assim como o IFRS une diferentes saberes para formar profissionais completos.`, incorrect: `O livro é "Macunaíma", um clássico do modernismo brasileiro.` } }, { pergunta: `Os modernistas queriam criar uma linguagem artística brasileira. O IFRS, por sua vez, foca em criar soluções e formar profissionais para qual contexto?`, opcoes: ["Apenas para o mercado internacional", "Para as necessidades e o desenvolvimento local e regional", "Apenas para a pesquisa acadêmica pura", "Para a preservação de tradições antigas"], respostaCorreta: 1, feedback: { correct: `Isso! Assim como os modernistas olharam para o Brasil, o IFRS tem um forte compromisso com o desenvolvimento da sua região.`, incorrect: `Assim como os modernistas, o IFRS foca no Brasil, mais especificamente nas necessidades e no desenvolvimento local e regional.` } }, { pergunta: `Mário de Andrade foi um grande pesquisador. Qual atividade, incentivada no IFRS, é fundamental para a criação de ciência e tecnologia?`, opcoes: ["Aulas expositivas", "Provas de múltipla escolha", "Projetos de pesquisa e extensão", "Leitura de apostilas"], respostaCorreta: 2, feedback: { correct: `Perfeito! A pesquisa é o motor do conhecimento, um ideal que conectaria o trabalho de Mário de Andrade ao do IFRS.`, incorrect: `A atividade que melhor representa esse espírito de descoberta são os projetos de pesquisa e extensão.` } }, { pergunta: `A arquitetura moderna, presente no campus do IFRS, valoriza a função sobre o ornamento. Este princípio foi resumido na famosa frase do arquiteto Mies van der Rohe:`, opcoes: ["'Penso, logo existo'", "'A forma segue a função'", "'Menos é mais'", "'A casa é uma máquina de morar'"], respostaCorreta: 2, feedback: { correct: `Correto! O princípio de "Menos é mais" (Less is more) define a busca pela simplicidade e funcionalidade, alinhada ao espírito de ruptura modernista.`, incorrect: `A famosa frase é "Menos é mais" (Less is more), um lema da arquitetura e do design moderno.` } } ] }
+};
+
+
+window.addEventListener('load', () => {
+    let activeMarker = null, isDragging = false, hasDragged = false, offsetX = 0, offsetY = 0;
+    const mapContainer = document.getElementById('map-container');
+    const quizModalOverlay = document.getElementById('quiz-modal-overlay');
+    const quizCloseButton = document.getElementById('quiz-close-button');
+    const completionModalOverlay = document.getElementById('completion-modal-overlay');
+    const completionCloseButton = document.getElementById('completion-close-button');
+    const restartAllButton = document.getElementById('restart-all-button');
+    const allMarkers = document.querySelectorAll('.map-marker');
+    const quizContainer = document.getElementById('quiz-container');
+    const quizResultsArea = document.getElementById('quiz-results-area');
+
+    function initializeState() { Object.values(pontosTuristicos).forEach(spot => { spot.isAnswered = false; spot.userAnswers = []; spot.score = 0; }); }
+
+    function initializePositions() {
+        allMarkers.forEach(marker => {
+            marker.removeAttribute('style');
+        });
+        setTimeout(drawConnectingLines, 50);
+    }
+    
+    function drawConnectingLines() { const svg = document.getElementById('map-lines'); svg.innerHTML = ''; for (let i = 0; i < connectionPath.length - 1; i++) { const startPointId = connectionPath[i]; const endPointId = connectionPath[i+1]; const startMarker = document.getElementById(`marker-${startPointId}`); const endMarker = document.getElementById(`marker-${endPointId}`); if (startMarker && endMarker) { const x1 = startMarker.offsetLeft + startMarker.offsetWidth / 2; const y1 = startMarker.offsetTop + startMarker.offsetHeight / 2; const x2 = endMarker.offsetLeft + endMarker.offsetWidth / 2; const y2 = endMarker.offsetTop + endMarker.offsetHeight / 2; const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2); line.setAttribute('stroke', 'white'); line.setAttribute('stroke-width', '3'); line.setAttribute('stroke-dasharray', '5, 5'); svg.appendChild(line); } } }
+    function dragStart(e) { activeMarker = e.currentTarget; const tooltip = activeMarker.querySelector('.tooltip'); if (tooltip) { tooltip.classList.remove('visible'); } e.preventDefault(); const markerRect = activeMarker.getBoundingClientRect(); offsetX = e.clientX - markerRect.left; offsetY = e.clientY - markerRect.top; isDragging = true; hasDragged = false; activeMarker.classList.add('dragging'); document.addEventListener('mousemove', dragging); document.addEventListener('mouseup', dragEnd); }
+    function dragging(e) { if (!isDragging) return; hasDragged = true; e.preventDefault(); const mapRect = mapContainer.getBoundingClientRect(); let newX = e.clientX - mapRect.left - offsetX; let newY = e.clientY - mapRect.top - offsetY; const markerSize = activeMarker.offsetWidth; if (newX < 0) newX = 0; if (newY < 0) newY = 0; if (newX > mapContainer.clientWidth - markerSize) newX = mapContainer.clientWidth - markerSize; if (newY > mapContainer.clientHeight - markerSize) newY = mapContainer.clientHeight - markerSize; activeMarker.style.left = `${newX}px`; activeMarker.style.top = `${newY}px`; drawConnectingLines(); }
+    function dragEnd() { if (!isDragging) return; isDragging = false; if (activeMarker) { activeMarker.classList.remove('dragging'); } activeMarker = null; document.removeEventListener('mousemove', dragging); document.removeEventListener('mouseup', dragEnd); }
+    function showTooltip(e) { const marker = e.currentTarget; const tooltip = marker.querySelector('.tooltip'); if (!tooltip || isDragging) return; tooltip.classList.remove('position-above', 'position-below'); tooltip.style.transform = ''; const markerTop = marker.offsetTop; const tooltipHeight = tooltip.offsetHeight || 40; if (markerTop < tooltipHeight + 10) { tooltip.classList.add('position-below'); } else { tooltip.classList.add('position-above'); } const mapWidth = mapContainer.clientWidth; const markerLeft = marker.offsetLeft; const markerWidth = marker.offsetWidth; const tooltipWidth = tooltip.offsetWidth; const tooltipHalfWidth = tooltipWidth / 2; const idealTooltipLeft = markerLeft + (markerWidth / 2) - tooltipHalfWidth; let horizontalAdjust = 0; if (idealTooltipLeft + tooltipWidth > mapWidth) { const overflow = (idealTooltipLeft + tooltipWidth) - mapWidth; horizontalAdjust = -overflow - 10; } if (idealTooltipLeft < 0) { const overflow = idealTooltipLeft; horizontalAdjust = -overflow + 10; } if (horizontalAdjust !== 0) { tooltip.style.transform = `translateX(${horizontalAdjust}px)`; } tooltip.classList.add('visible'); }
+    function hideTooltip(e) { const tooltip = e.currentTarget.querySelector('.tooltip'); if (tooltip) { tooltip.classList.remove('visible'); } }
+    
+    function openQuizModal(spotId) {
+        const spotData = pontosTuristicos[spotId];
+        if (!spotData) return;
+        document.querySelector('#quiz-modal-overlay .modal-content').scrollTop = 0;
+        document.getElementById('modal-title').textContent = `${spotData.nome} pelos olhos de ${spotData.artista}`;
+        document.getElementById('modal-image').style.backgroundImage = `url(${spotData.imagemUrl})`;
+        document.getElementById('modal-intro').textContent = spotData.textoIntroducao;
+        quizContainer.innerHTML = '';
+        quizResultsArea.innerHTML = '';
+        if (spotData.isAnswered) {
+            buildAnsweredQuiz(spotData);
+        } else {
+            buildQuiz(spotData);
+        }
+        quizModalOverlay.style.display = 'flex';
+    }
+    function closeQuizModal() { quizModalOverlay.style.display = 'none'; }
+    function showCompletionModal() {
+        const totalScore = Object.values(pontosTuristicos).reduce((sum, spot) => sum + spot.score, 0);
+        const totalQuestions = Object.values(pontosTuristicos).reduce((sum, spot) => sum + spot.quiz.length, 0);
+        document.getElementById('final-score').textContent = totalScore;
+        document.getElementById('total-questions').textContent = totalQuestions;
+        completionModalOverlay.style.display = 'flex';
+    }
+    function closeCompletionModal() { completionModalOverlay.style.display = 'none'; }
+    
+    function buildQuiz(spotData, isAnsweredView = false) {
+        const form = document.createElement('form');
+        form.id = 'quiz-form';
+        quizContainer.appendChild(form);
+        spotData.quiz.forEach((q, index) => {
+            const questionBlock = document.createElement('div');
+            questionBlock.className = 'question-block';
+            const questionTitle = document.createElement('h4');
+            questionTitle.textContent = `Pergunta ${index + 1}: ${q.pergunta}`;
+            questionBlock.appendChild(questionTitle);
+            q.opcoes.forEach((opcao, i) => {
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                const textSpan = document.createElement('span');
+                input.type = 'radio';
+                input.name = `question-${index}`;
+                input.value = i;
+                textSpan.textContent = ` ${opcao}`;
+                if (isAnsweredView) {
+                    input.checked = (spotData.userAnswers[index] === i);
+                    input.disabled = true;
+                } else {
+                    input.required = true;
+                }
+                label.appendChild(input);
+                label.appendChild(textSpan);
+                questionBlock.appendChild(label);
+            });
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback';
+            if (isAnsweredView) {
+                const userAnswer = spotData.userAnswers[index];
+                if (userAnswer === q.respostaCorreta) {
+                    feedback.textContent = `✅ ${q.feedback.correct}`;
+                    feedback.className = 'feedback correct';
+                } else {
+                    feedback.textContent = `❌ ${q.feedback.incorrect}`;
+                    feedback.className = 'feedback incorrect';
+                }
+                feedback.style.display = 'block';
+            }
+            questionBlock.appendChild(feedback);
+            form.appendChild(questionBlock);
+        });
+        if (!isAnsweredView) {
+            const submitButton = document.createElement('button');
+            submitButton.type = 'submit';
+            submitButton.id = 'quiz-submit';
+            submitButton.className = 'quiz-button';
+            submitButton.textContent = 'Verificar Respostas';
+            form.appendChild(submitButton);
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                checkAnswers(spotData);
+            });
+        }
+    }
+
+    function buildAnsweredQuiz(spotData) {
+        buildQuiz(spotData, true);
+        showResults(spotData);
+    }
+
+    function checkAnswers(spotData) {
+        let score = 0;
+        const form = document.getElementById('quiz-form');
+        spotData.quiz.forEach((q, index) => {
+            const selectedOption = form.querySelector(`input[name="question-${index}"]:checked`);
+            if (selectedOption) {
+                const answerIndex = parseInt(selectedOption.value);
+                spotData.userAnswers[index] = answerIndex;
+                if (answerIndex === q.respostaCorreta) {
+                    score++;
+                }
+            }
+        });
+        spotData.score = score;
+        spotData.isAnswered = true;
+        quizContainer.innerHTML = '';
+        buildAnsweredQuiz(spotData);
+        const allAnswered = Object.values(pontosTuristicos).every(spot => spot.isAnswered);
+        if (allAnswered) {
+            setTimeout(showCompletionModal, 1500);
+        }
+    }
+
+    function showResults(spotData) {
+        quizResultsArea.innerHTML = '';
+        const scoreText = document.createElement('p');
+        scoreText.id = 'quiz-score';
+        scoreText.textContent = `Você acertou ${spotData.score} de ${spotData.quiz.length} perguntas!`;
+        quizResultsArea.appendChild(scoreText);
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.className = 'results-buttons';
+        quizResultsArea.appendChild(buttonsContainer);
+        const backButton = document.createElement('button');
+        backButton.id = 'back-button';
+        backButton.className = 'quiz-button';
+        backButton.textContent = 'Voltar para o Roteiro';
+        backButton.addEventListener('click', closeQuizModal);
+        buttonsContainer.appendChild(backButton);
+        const resetButton = document.createElement('button');
+        resetButton.id = 'reset-button';
+        resetButton.className = 'quiz-button';
+        resetButton.textContent = 'Responder Novamente';
+        resetButton.addEventListener('click', () => {
+            spotData.isAnswered = false;
+            spotData.userAnswers = [];
+            spotData.score = 0;
+            openQuizModal(spotData.id);
+        });
+        buttonsContainer.appendChild(resetButton);
+    }
+        
+    initializeState();
+    drawConnectingLines();
+
+    window.addEventListener('resize', drawConnectingLines);
+
+    allMarkers.forEach(marker => {
+        marker.addEventListener('mousedown', dragStart);
+        marker.addEventListener('click', (e) => {
+            if (!hasDragged) {
+                openQuizModal(e.currentTarget.dataset.spot);
+            }
+        });
+        marker.addEventListener('mouseenter', showTooltip);
+        marker.addEventListener('mouseleave', hideTooltip);
+    });
+
+    quizCloseButton.addEventListener('click', closeQuizModal);
+    quizModalOverlay.addEventListener('click', (event) => { if (event.target === quizModalOverlay) closeQuizModal(); });
+    
+    completionCloseButton.addEventListener('click', closeCompletionModal);
+    completionModalOverlay.addEventListener('click', (event) => { if (event.target === completionModalOverlay) closeCompletionModal(); });
+
+    restartAllButton.addEventListener('click', () => {
+        closeCompletionModal();
+        initializeState();
+        allMarkers.forEach(marker => {
+            marker.removeAttribute('style');
+        });
+        setTimeout(drawConnectingLines, 50);
+    });
+});
+</script>
+
+</body>
+</html>
